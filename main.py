@@ -14,7 +14,7 @@ DOWNLOAD_FOLDER = "downloads"
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-SAVE_ENDPOINT = "https://fless.ps.fhgdps.com/save_song.php"
+SAVE_ENDPOINT = "https://fless.ps.fhgdps.com/api/save_song.php"
 
 @bot.event
 async def on_ready():
