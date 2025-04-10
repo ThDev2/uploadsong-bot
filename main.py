@@ -2,22 +2,39 @@ import discord
 from pytube import YouTube
 import os
 import re
-import asyncio
+import json
+from datetime import datetime
 
+# Setup intents
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 
 bot = discord.Client(intents=intents)
 
+# Folder dan file penyimpanan
 DOWNLOAD_FOLDER = "downloads"
+DB_FILE = "songs.json"
+
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-MAX_FILE_SIZE_MB = 8  # batas upload Discord default
+MAX_FILE_SIZE_MB = 8  # Batas upload Discord
 
 def convert_size(size_bytes):
     return round(size_bytes / (1024 * 1024), 2)
+
+def save_song(data):
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r") as f:
+            all_data = json.load(f)
+    else:
+        all_data = []
+
+    all_data.append(data)
+
+    with open(DB_FILE, "w") as f:
+        json.dump(all_data, f, indent=2)
 
 @bot.event
 async def on_ready():
@@ -31,7 +48,7 @@ async def on_message(message):
     content = message.content.lower()
 
     if message.mentions and bot.user in message.mentions:
-        # Fitur REUPLOAD
+        # Command: reup
         if "reup" in content:
             match = re.search(r'(https?://\S+)', message.content)
             if not match:
@@ -57,12 +74,21 @@ async def on_message(message):
                     return
 
                 await message.channel.send(content=f"**{title}**", file=discord.File(new_file))
+
+                # Simpan ke songs.json
+                save_song({
+                    "judul": title,
+                    "url": url,
+                    "uploader": str(message.author),
+                    "tanggal": str(datetime.utcnow()),
+                })
+
                 os.remove(new_file)
 
             except Exception as e:
                 await message.channel.send(f"Gagal upload lagu: {e}")
 
-        # Fitur CUSTOM INFO (misal: @FlessSongID info Judul | Artis | Tahun)
+        # Command: info
         elif "info" in content:
             try:
                 parts = message.content.split("info", 1)[1].strip().split("|")
