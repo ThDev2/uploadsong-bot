@@ -1,4 +1,3 @@
 discord.py
 pytube
-moviepy
-imageio[ffmpeg]
+requests
