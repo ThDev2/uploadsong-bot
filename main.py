@@ -10,15 +10,14 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-# Ini nih perbaikannya:
-bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Event saat bot siap
+# Event: Bot ready
 @bot.event
 async def on_ready():
     print(f"Bot {bot.user.name} aktif! Siap membantu! ✧*｡٩(ˊᗜˋ*)و✧*｡")
 
-# Event welcome member baru
+# Event: Welcome new member
 @bot.event
 async def on_member_join(member):
     channel = discord.utils.get(member.guild.text_channels, name="general")
@@ -31,7 +30,7 @@ async def on_member_join(member):
         embed.set_thumbnail(url=member.avatar.url)
         await channel.send(embed=embed)
 
-# Function untuk auto log ke channel 'log'
+# Function: Send log to #log channel
 async def send_log(guild, message):
     log_channel = discord.utils.get(guild.text_channels, name="log")
     if log_channel:
@@ -64,14 +63,6 @@ async def bot_info(ctx):
     embed.add_field(name="Website", value="https://fless.ps.fhgdps.com", inline=False)
     await ctx.send(embed=embed)
 
-# Command: Help
-@bot.command(name="help", help="Menampilkan semua perintah")
-async def help_command(ctx):
-    embed = discord.Embed(title="Daftar Perintah", color=discord.Color.teal())
-    for command in bot.commands:
-        embed.add_field(name=f"!{command.name}", value=command.help or "Tanpa deskripsi", inline=False)
-    await ctx.send(embed=embed)
-
 # Command: Clear Chat
 @bot.command(name="clear", help="Hapus sejumlah pesan")
 async def clear(ctx, amount: int = 5):
@@ -79,21 +70,21 @@ async def clear(ctx, amount: int = 5):
     await ctx.send(f"Menghapus `{amount}` pesan!", delete_after=3)
     await send_log(ctx.guild, f"{ctx.author} menghapus {amount} pesan di #{ctx.channel}.")
 
-# Command: Ban
+# Command: Ban Member
 @bot.command(name="ban", help="Ban member dari server")
 async def ban(ctx, member: discord.Member, *, reason=None):
     await member.ban(reason=reason)
     await ctx.send(f"Member {member} berhasil di-ban!")
     await send_log(ctx.guild, f"{ctx.author} banned {member} karena: {reason or 'Tidak ada alasan.'}")
 
-# Command: Kick
+# Command: Kick Member
 @bot.command(name="kick", help="Kick member dari server")
 async def kick(ctx, member: discord.Member, *, reason=None):
     await member.kick(reason=reason)
     await ctx.send(f"Member {member} berhasil di-kick!")
     await send_log(ctx.guild, f"{ctx.author} kick {member} karena: {reason or 'Tidak ada alasan.'}")
 
-# Command: Unban
+# Command: Unban Member
 @bot.command(name="unban", help="Unban member dari server")
 async def unban(ctx, *, member):
     banned_users = await ctx.guild.bans()
@@ -151,7 +142,7 @@ async def upload_song(ctx, *, song_name: str):
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
-# Command: Embed
+# Command: Kirim Embed
 @bot.command(name="embed", help="Kirim pesan embed cantik")
 async def send_embed(ctx):
     embed = discord.Embed(
@@ -162,5 +153,5 @@ async def send_embed(ctx):
     embed.set_footer(text="Dibuat penuh cinta oleh Amelia~")
     await ctx.send(embed=embed)
 
-# Run bot
+# Bot run
 bot.run(TOKEN)
