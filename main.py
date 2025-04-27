@@ -1,181 +1,165 @@
+import os
 import discord
 from discord.ext import commands
-import os
 import requests
 
-TOKEN = os.environ["DISCORD_TOKEN"]
+# Bot Setup
+TOKEN = os.environ.get("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Config
-EMBED_COLOR = discord.Color.blurple()
-FOOTER_TEXT = "FreedomGDPS Bot • Powered by Fless"
-THUMBNAIL_URL = "https://fless.ps.fhgdps.com/logo.png"
-
-# Ready Event
+# Event saat bot siap
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    print(f"Bot {bot.user} is ready!")
+    print(f"Bot {bot.user.name} aktif! Siap membantu! ✧*｡٩(ˊᗜˋ*)و✧*｡")
 
-# Welcome Message
+# Event welcome member baru
 @bot.event
 async def on_member_join(member):
     channel = discord.utils.get(member.guild.text_channels, name="general")
     if channel:
         embed = discord.Embed(
             title="Selamat Datang!",
-            description=f"Selamat datang {member.mention} di **{member.guild.name}**!",
-            color=EMBED_COLOR
+            description=f"Hey {member.mention}, selamat datang di {member.guild.name}!",
+            color=discord.Color.green()
         )
-        embed.set_thumbnail(url=member.avatar.url if member.avatar else THUMBNAIL_URL)
-        embed.set_footer(text=FOOTER_TEXT)
+        embed.set_thumbnail(url=member.avatar.url)
         await channel.send(embed=embed)
 
-# Ping Command
-@bot.tree.command(name="ping", description="Cek kecepatan bot")
-async def ping(interaction: discord.Interaction):
+# Function untuk auto log ke channel 'log'
+async def send_log(guild, message):
+    log_channel = discord.utils.get(guild.text_channels, name="log")
+    if log_channel:
+        await log_channel.send(message)
+
+# Command: Ping
+@bot.command(name="ping", help="Cek koneksi bot")
+async def ping(ctx):
     latency = round(bot.latency * 1000)
-    embed = discord.Embed(title="Pong!", description=f"Latency: `{latency}ms`", color=EMBED_COLOR)
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
+    await ctx.send(f"Pong! `{latency}ms` (⌒‿⌒)")
 
-# Bot Info
-@bot.tree.command(name="botinfo", description="Informasi bot")
-async def botinfo(interaction: discord.Interaction):
+# Command: Server Info
+@bot.command(name="serverinfo", help="Lihat info server")
+async def server_info(ctx):
+    guild = ctx.guild
+    embed = discord.Embed(title="Server Info", color=discord.Color.blue())
+    embed.add_field(name="Nama", value=guild.name)
+    embed.add_field(name="Owner", value=guild.owner)
+    embed.add_field(name="Members", value=guild.member_count)
+    await ctx.send(embed=embed)
+
+# Command: Bot Info
+@bot.command(name="botinfo", help="Informasi tentang bot")
+async def bot_info(ctx):
     embed = discord.Embed(
-        title="FreedomGDPS Assistant",
-        description="Bot Assistant untuk server FrGDPS!",
-        color=EMBED_COLOR
+        title="Bot Info",
+        description="Aku FlessGDBot, dibuat penuh cinta oleh Amelia~ (◕‿◕✿)",
+        color=discord.Color.purple()
     )
-    embed.add_field(name="Developer", value="Fless", inline=True)
-    embed.add_field(name="Framework", value="discord.py", inline=True)
-    embed.add_field(name="Hosting", value="Railway", inline=True)
-    embed.set_thumbnail(url=THUMBNAIL_URL)
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
+    embed.add_field(name="Website", value="https://fless.ps.fhgdps.com", inline=False)
+    await ctx.send(embed=embed)
 
-# Help Command
-@bot.tree.command(name="help", description="Lihat semua perintah bot")
-async def help_command(interaction: discord.Interaction):
-    embed = discord.Embed(title="FreedomGDPS Assistant Help", color=EMBED_COLOR)
-    embed.add_field(name="/ping", value="Cek kecepatan bot", inline=False)
-    embed.add_field(name="/botinfo", value="Info tentang bot", inline=False)
-    embed.add_field(name="/gdpsinfo", value="Level terbaru di FreedomGDPS", inline=False)
-    embed.add_field(name="/serverinfo", value="Informasi server Discord", inline=False)
-    embed.add_field(name="/userinfo", value="Informasi tentang member", inline=False)
-    embed.add_field(name="/kick", value="Kick member", inline=False)
-    embed.add_field(name="/ban", value="Ban member", inline=False)
-    embed.add_field(name="/unban", value="Unban member", inline=False)
-    embed.add_field(name="/clear", value="Hapus pesan dalam jumlah tertentu", inline=False)
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
+# Command: Help
+@bot.command(name="help", help="Menampilkan semua perintah")
+async def help_command(ctx):
+    embed = discord.Embed(title="Daftar Perintah", color=discord.Color.teal())
+    for command in bot.commands:
+        embed.add_field(name=f"!{command.name}", value=command.help or "Tanpa deskripsi", inline=False)
+    await ctx.send(embed=embed)
 
-# GDPS Info
-@bot.tree.command(name="gdpsinfo", description="Lihat level terbaru di GDPS")
-async def gdpsinfo(interaction: discord.Interaction):
-    try:
-        response = requests.post("https://fless.ps.fhgdps.com/getGJLevels21.php", data={
-            "secret": "Wmfd2893gb7",
-            "type": "0",
-            "str": "",
-            "diff": "-",
-            "len": "-",
-            "page": "0",
-        })
-        if response.status_code == 200:
-            data = response.text.split("|")
-            embed = discord.Embed(
-                title="FreedomGDPS - Level Terbaru",
-                description="Berikut beberapa level terakhir:",
-                color=EMBED_COLOR
-            )
-            for level in data[:5]:
-                info = level.split(":")
-                if len(info) > 3:
-                    embed.add_field(name=f"{info[3]}", value=f"by {info[6]}", inline=False)
-            embed.set_thumbnail(url=THUMBNAIL_URL)
-            embed.set_footer(text=FOOTER_TEXT)
-            await interaction.response.send_message(embed=embed)
-        else:
-            await interaction.response.send_message("Gagal mengambil data dari GDPS.", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
+# Command: Clear Chat
+@bot.command(name="clear", help="Hapus sejumlah pesan")
+async def clear(ctx, amount: int = 5):
+    await ctx.channel.purge(limit=amount + 1)
+    await ctx.send(f"Menghapus `{amount}` pesan!", delete_after=3)
+    await send_log(ctx.guild, f"{ctx.author} menghapus {amount} pesan di #{ctx.channel}.")
 
-# Server Info
-@bot.tree.command(name="serverinfo", description="Lihat informasi server Discord")
-async def serverinfo(interaction: discord.Interaction):
-    guild = interaction.guild
-    embed = discord.Embed(title=guild.name, color=EMBED_COLOR)
-    embed.add_field(name="Member Count", value=guild.member_count)
-    embed.add_field(name="Server Owner", value=guild.owner)
-    embed.set_thumbnail(url=guild.icon.url if guild.icon else THUMBNAIL_URL)
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
-
-# User Info
-@bot.tree.command(name="userinfo", description="Lihat informasi tentang member")
-async def userinfo(interaction: discord.Interaction, member: discord.Member):
-    embed = discord.Embed(title=f"User Info - {member}", color=EMBED_COLOR)
-    embed.add_field(name="Username", value=member.name)
-    embed.add_field(name="ID", value=member.id)
-    embed.add_field(name="Status", value=member.status)
-    embed.set_thumbnail(url=member.avatar.url if member.avatar else THUMBNAIL_URL)
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
-
-# Kick Command
-@bot.tree.command(name="kick", description="Kick member dari server")
-async def kick(interaction: discord.Interaction, member: discord.Member, reason: str = "Tidak ada alasan"):
-    await member.kick(reason=reason)
-    embed = discord.Embed(
-        title="Member di-Kick",
-        description=f"{member.mention} telah di-kick.\n**Alasan:** {reason}",
-        color=EMBED_COLOR
-    )
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
-
-# Ban Command
-@bot.tree.command(name="ban", description="Ban member dari server")
-async def ban(interaction: discord.Interaction, member: discord.Member, reason: str = "Tidak ada alasan"):
+# Command: Ban
+@bot.command(name="ban", help="Ban member dari server")
+async def ban(ctx, member: discord.Member, *, reason=None):
     await member.ban(reason=reason)
-    embed = discord.Embed(
-        title="Member di-Ban",
-        description=f"{member.mention} telah di-ban.\n**Alasan:** {reason}",
-        color=EMBED_COLOR
-    )
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
+    await ctx.send(f"Member {member} berhasil di-ban!")
+    await send_log(ctx.guild, f"{ctx.author} banned {member} karena: {reason or 'Tidak ada alasan.'}")
 
-# Unban Command
-@bot.tree.command(name="unban", description="Unban member dari server")
-async def unban(interaction: discord.Interaction, user_id: int):
-    user = await bot.fetch_user(user_id)
-    await interaction.guild.unban(user)
-    embed = discord.Embed(
-        title="Member di-Unban",
-        description=f"{user.mention} telah di-unban.",
-        color=EMBED_COLOR
-    )
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed)
+# Command: Kick
+@bot.command(name="kick", help="Kick member dari server")
+async def kick(ctx, member: discord.Member, *, reason=None):
+    await member.kick(reason=reason)
+    await ctx.send(f"Member {member} berhasil di-kick!")
+    await send_log(ctx.guild, f"{ctx.author} kick {member} karena: {reason or 'Tidak ada alasan.'}")
 
-# Clear Messages
-@bot.tree.command(name="clear", description="Hapus sejumlah pesan")
-async def clear(interaction: discord.Interaction, amount: int):
-    await interaction.channel.purge(limit=amount)
-    embed = discord.Embed(
-        title="Pesan Dihapus",
-        description=f"{amount} pesan berhasil dihapus!",
-        color=EMBED_COLOR
-    )
-    embed.set_footer(text=FOOTER_TEXT)
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+# Command: Unban
+@bot.command(name="unban", help="Unban member dari server")
+async def unban(ctx, *, member):
+    banned_users = await ctx.guild.bans()
+    member_name, member_discriminator = member.split("#")
+    for ban_entry in banned_users:
+        user = ban_entry.user
+        if (user.name, user.discriminator) == (member_name, member_discriminator):
+            await ctx.guild.unban(user)
+            await ctx.send(f"{user} berhasil di-unban!")
+            await send_log(ctx.guild, f"{ctx.author} unbanned {user}.")
+            return
+    await ctx.send("User tidak ditemukan.")
 
+# Command: User Info
+@bot.command(name="userinfo", help="Lihat info tentang member")
+async def userinfo(ctx, member: discord.Member = None):
+    member = member or ctx.author
+    embed = discord.Embed(title=f"Info {member}", color=discord.Color.gold())
+    embed.add_field(name="ID", value=member.id)
+    embed.add_field(name="Bergabung pada", value=member.joined_at.strftime("%d %B %Y"))
+    embed.set_thumbnail(url=member.avatar.url)
+    await ctx.send(embed=embed)
+
+# Command: GDPS Info
+@bot.command(name="gdpsinfo", help="Cek status GDPS")
+async def gdps_info(ctx):
+    try:
+        url = "https://fless.ps.fhgdps.com/getGJLevels21.php"
+        response = requests.post(url, data={"str": "", "page": "0", "total": "0", "type": "0"})
+        if response.status_code == 200 and response.text.strip() != "-1":
+            await ctx.send("GDPS aktif! (｡♥‿♥｡)")
+        else:
+            await ctx.send("GDPS tidak bisa diakses. (〒︿〒)")
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+
+# Command: Upload Lagu ke GDPS
+@bot.command(name="uploadsong", help="Upload lagu ke GDPS")
+async def upload_song(ctx, *, song_name: str):
+    try:
+        data = {
+            "songName": song_name,
+            "artistName": "Fless",
+            "youtubeURL": "https://youtube.com",
+            "songID": "0",
+            "secret": "Wmfd2893gb7"
+        }
+        url = "https://fless.ps.fhgdps.com/uploadGJSong.php"
+        response = requests.post(url, data=data)
+
+        if response.status_code == 200 and response.text.strip() != "-1":
+            await ctx.send(f"Lagu `{song_name}` berhasil di-upload ke GDPS!")
+        else:
+            await ctx.send("Gagal mengupload lagu!")
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+
+# Command: Embed
+@bot.command(name="embed", help="Kirim pesan embed cantik")
+async def send_embed(ctx):
+    embed = discord.Embed(
+        title="Halo dari FlessGDBot!",
+        description="Aku hadir untuk membantu fless! (つ≧▽≦)つ",
+        color=discord.Color.pink()
+    )
+    embed.set_footer(text="Dibuat penuh cinta oleh Amelia~")
+    await ctx.send(embed=embed)
+
+# Run bot
 bot.run(TOKEN)
