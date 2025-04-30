@@ -143,7 +143,7 @@ async def help_command(interaction: discord.Interaction):
 @app_commands.describe(query="Judul lagu yang mau dicari.")
 async def searchsong(interaction: discord.Interaction, query: str):
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://fless.ps.fhgdps.com/getGJSongInfo.php?query={query}") as resp:
+        async with session.get(f"https://fless.ps.fhgdps.com/dashboard/api/songs.php?query={query}") as resp:
             if resp.status == 200:
                 data = await resp.json()
                 if data.get("success"):
@@ -171,7 +171,7 @@ async def gdpsinfo(interaction: discord.Interaction):
 @app_commands.describe(id="ID level yang mau dicari.")
 async def levelinfo(interaction: discord.Interaction, id: int):
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://fless.ps.fhgdps.com/getGJLevels.php?id={id}") as resp:
+        async with session.get(f"https://fless.ps.fhgdps.com/dashboard/api/searchLevel.php?id={id}") as resp:
             if resp.status == 200:
                 data = await resp.json()
                 if data.get("success"):
