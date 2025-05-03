@@ -79,28 +79,29 @@ async def avatar(ctx, member: discord.Member = None):
     await ctx.send(embed=embed)
 
 @bot.command(name="createembed")
-async def create_embed(ctx):
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-    await ctx.send("Masukkan **Judul** dan **Isi** dengan format:\n`Judul: ...`\n`Isi: ...`")
-
+async def create_embed(ctx, *, arg):
     try:
-        msg = await bot.wait_for("message", timeout=180.0, check=check)
-        lines = msg.content.split("Isi:")
-        if len(lines) < 2:
-            return await ctx.send("Format salah. Harus ada `Judul:` dan `Isi:`.")
-        
-        title_line = lines[0].replace("Judul:", "").strip()
-        content = lines[1].strip()
+        parts = [part.strip() for part in arg.split("|")]
+        if len(parts) < 2:
+            return await ctx.send("Format salah. Gunakan `Judul | Isi | Warna (opsional) | Thumbnail (opsional) | Footer (opsional)`.")
 
-        embed = discord.Embed(description=content, color=0xc2c2c2)
-        embed.title = title_line
+        title = parts[0]
+        description = parts[1]
+        color = int(parts[2].replace("#", ""), 16) if len(parts) >= 3 and parts[2] else 0x2f3136
+        thumbnail = parts[3] if len(parts) >= 4 and parts[3].startswith("http") else None
+        footer = parts[4] if len(parts) >= 5 else None
+
+        embed = discord.Embed(title=title, description=description, color=color)
+        if thumbnail:
+            embed.set_thumbnail(url=thumbnail)
+        if footer:
+            embed.set_footer(text=footer)
+
         await ctx.send(embed=embed)
 
-    except asyncio.TimeoutError:
-        await ctx.send("Waktu habis. Silakan coba lagi.")
-
+    except Exception as e:
+        await ctx.send(f"Gagal membuat embed: {e}")
+        
 @bot.command(name="menu")
 async def help_command(ctx):
     embed = discord.Embed(title="FlessGDBot Commands", description="Semua fitur keren yang bisa kamu pakai:", color=discord.Color.blue())
