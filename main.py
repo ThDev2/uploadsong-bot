@@ -79,15 +79,27 @@ async def avatar(ctx, member: discord.Member = None):
     await ctx.send(embed=embed)
 
 @bot.command(name="createembed")
-async def create_embed(ctx, title: str, description: str, color: str = "#3498db"):
+async def create_embed(ctx):
+    def check(m):
+        return m.author == ctx.author and m.channel == ctx.channel
+
+    await ctx.send("Masukkan **Judul** dan **Isi** dengan format:\n`Judul: ...`\n`Isi: ...`")
+
     try:
-        if not color.startswith("#"):
-            color = f"#{color}"
-        color_int = int(color[1:], 16)
-        embed = discord.Embed(title=title, description=description, color=color_int)
+        msg = await bot.wait_for("message", timeout=180.0, check=check)
+        lines = msg.content.split("Isi:")
+        if len(lines) < 2:
+            return await ctx.send("Format salah. Harus ada `Judul:` dan `Isi:`.")
+        
+        title_line = lines[0].replace("Judul:", "").strip()
+        content = lines[1].strip()
+
+        embed = discord.Embed(description=content, color=0xc2c2c2)
+        embed.title = title_line
         await ctx.send(embed=embed)
-    except ValueError:
-        await ctx.send("Format warna salah sayang! Gunakan HEX misal `#FF5733`.")
+
+    except asyncio.TimeoutError:
+        await ctx.send("Waktu habis. Silakan coba lagi.")
 
 @bot.command(name="menu")
 async def help_command(ctx):
