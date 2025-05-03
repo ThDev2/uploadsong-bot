@@ -95,7 +95,8 @@ async def botinfo(interaction: discord.Interaction):
 @bot.tree.command(name="gtw", description="Bot mengulang pesanmu.")
 @app_commands.describe(message="Apa yang kamu mau bot katakan?")
 async def say(interaction: discord.Interaction, message: str):
-    await interaction.response.send_message(message)
+    await interaction.response.defer(thinking=False)  # Tidak balas langsung
+    await interaction.followup.send(message)
 
 # Avatar
 @bot.tree.command(name="avatar", description="Lihat avatar member.")
@@ -114,15 +115,15 @@ async def avatar(interaction: discord.Interaction, member: discord.Member = None
     color="Warna embed (HEX, contoh: #FF5733)"
 )
 async def createembed(interaction: discord.Interaction, title: str, description: str, color: str = "#3498db"):
+    await interaction.response.defer(thinking=False)  # Tidak balas langsung
     try:
         if not color.startswith("#"):
             color = f"#{color}"
         color_int = int(color[1:], 16)
         embed = discord.Embed(title=title, description=description, color=color_int)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
     except ValueError:
-        await interaction.response.send_message("Format warna salah sayang! Gunakan HEX misal `#FF5733`.", ephemeral=True)
-
+        await interaction.followup.send("Format warna salah sayang! Gunakan HEX misal `#FF5733`.", ephemeral=True)
 # Help
 @bot.tree.command(name="help", description="Lihat semua perintah bot ini.")
 async def help_command(interaction: discord.Interaction):
