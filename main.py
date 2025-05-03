@@ -89,7 +89,7 @@ async def create_embed(ctx, title: str, description: str, color: str = "#3498db"
     except ValueError:
         await ctx.send("Format warna salah sayang! Gunakan HEX misal `#FF5733`.")
 
-@bot.command(name="help")
+@bot.command(name="menu")
 async def help_command(ctx):
     embed = discord.Embed(title="FlessGDBot Commands", description="Semua fitur keren yang bisa kamu pakai:", color=discord.Color.blue())
     embed.add_field(name="F ping", value="Cek koneksi bot", inline=False)
