@@ -1,8 +1,8 @@
 import os
 import discord
+import aiohttp
 import requests
 from discord.ext import commands
-from discord import app_commands
 
 # Bot Setup
 TOKEN = os.environ.get("DISCORD_TOKEN")
@@ -12,192 +12,157 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-class FlessBot(commands.Bot):
-    def __init__(self):
-        super().__init__(
-            command_prefix="!",
-            intents=intents,
-            application_id=os.environ.get("APPLICATION_ID")
-        )
+bot = commands.Bot(command_prefix="F ", intents=intents)
 
-    async def setup_hook(self):
-        await self.tree.sync()
-        print(f"Slash commands synced! Bot siap.")
-
-bot = FlessBot()
-
+# ===== Event: Bot Ready =====
 @bot.event
 async def on_ready():
-    activity = discord.Game(name="/help | FlessGDBot aktif!")
+    activity = discord.Game(name="F help | FlessGDBot aktif!")
     await bot.change_presence(status=discord.Status.online, activity=activity)
-    print(f"Bot {bot.user.name} aktif!")
+    print(f"Bot {bot.user.name} aktif! ✨")
 
-# Ping
-@bot.tree.command(name="ping", description="Cek koneksi bot.")
-async def ping(interaction: discord.Interaction):
+# ===== Commands =====
+
+@bot.command(name="ping")
+async def ping(ctx):
     latency = round(bot.latency * 1000)
     embed = discord.Embed(title="Pong!", description=f"Latensi: `{latency}ms`", color=discord.Color.green())
-    await interaction.response.send_message(embed=embed)
+    await ctx.send(embed=embed)
 
-# Clear
-@bot.tree.command(name="clear", description="Hapus sejumlah pesan.")
-@app_commands.describe(amount="Jumlah pesan yang mau dihapus.")
-async def clear(interaction: discord.Interaction, amount: int):
-    if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message("Kamu tidak punya izin untuk menghapus pesan.", ephemeral=True)
+@bot.command(name="clear")
+async def clear(ctx, amount: int):
+    if not ctx.author.guild_permissions.manage_messages:
+        await ctx.send("Kamu tidak punya izin untuk menghapus pesan.")
         return
-    deleted = await interaction.channel.purge(limit=amount)
-    embed = discord.Embed(
-        title="Pesan Dihapus",
-        description=f"Berhasil menghapus `{len(deleted)}` pesan!",
-        color=discord.Color.red()
-    )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    deleted = await ctx.channel.purge(limit=amount)
+    embed = discord.Embed(title="Pesan Dihapus", description=f"Berhasil menghapus `{len(deleted)}` pesan!", color=discord.Color.red())
+    await ctx.send(embed=embed)
 
-# User Info
-@bot.tree.command(name="userinfo", description="Lihat info tentang member.")
-@app_commands.describe(member="Member yang ingin dilihat.")
-async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
-    member = member or interaction.user
+@bot.command(name="userinfo")
+async def userinfo(ctx, member: discord.Member = None):
+    member = member or ctx.author
     embed = discord.Embed(title=f"Info {member}", color=discord.Color.blurple())
     embed.add_field(name="ID", value=member.id)
-    embed.add_field(name="Bergabung", value=member.joined_at.strftime("%d %B %Y") if member.joined_at else "Tidak diketahui")
-    embed.set_thumbnail(url=member.display_avatar.url)
-    await interaction.response.send_message(embed=embed)
+    embed.add_field(name="Bergabung", value=member.joined_at.strftime("%d %B %Y"))
+    embed.set_thumbnail(url=member.avatar.url)
+    await ctx.send(embed=embed)
 
-# Server Info
-@bot.tree.command(name="serverinfo", description="Lihat info server ini.")
-async def serverinfo(interaction: discord.Interaction):
-    guild = interaction.guild
+@bot.command(name="serverinfo")
+async def serverinfo(ctx):
+    guild = ctx.guild
     embed = discord.Embed(title="Server Info", color=discord.Color.gold())
     embed.add_field(name="Nama Server", value=guild.name, inline=False)
     embed.add_field(name="Jumlah Member", value=guild.member_count)
     embed.add_field(name="Owner", value=str(guild.owner))
-    if guild.icon:
-        embed.set_thumbnail(url=guild.icon.url)
-    await interaction.response.send_message(embed=embed)
+    embed.set_thumbnail(url=guild.icon.url if guild.icon else discord.Embed.Empty)
+    await ctx.send(embed=embed)
 
-# Bot Info
-@bot.tree.command(name="botinfo", description="Informasi tentang bot.")
-async def botinfo(interaction: discord.Interaction):
+@bot.command(name="botinfo")
+async def botinfo(ctx):
     embed = discord.Embed(
-        title="FlessGDBot",
-        description="Bot resmi FreedomGDPS. Support: GiffariRMX, DANZGAME. Beta: RedBlue & Thio.",
+        title="FlessGDBot :billed_cap:",
+        description="Bot Discord resmi untuk FreedomGDPS. Di-Support Oleh GiffariRMX Dan DANZGAME. Beta Tester RedBlue Dan Thio",
         color=discord.Color.purple()
     )
     embed.add_field(name="Website Kami", value="[fless.ps.fhgdps.com](https://fless.ps.fhgdps.com)", inline=False)
-    await interaction.response.send_message(embed=embed)
+    await ctx.send(embed=embed)
 
-# Say
-@bot.tree.command(name="gtw", description="Bot mengulang pesanmu.")
-@app_commands.describe(message="Apa yang kamu mau bot katakan?")
-async def say(interaction: discord.Interaction, message: str):
-    await interaction.response.defer()
-    await interaction.followup.send(message)
+@bot.command(name="gtw")
+async def say(ctx, *, message: str):
+    await ctx.send(message)
 
-# Avatar
-@bot.tree.command(name="avatar", description="Lihat avatar member.")
-@app_commands.describe(member="Member yang ingin dilihat.")
-async def avatar(interaction: discord.Interaction, member: discord.Member = None):
-    member = member or interaction.user
+@bot.command(name="avatar")
+async def avatar(ctx, member: discord.Member = None):
+    member = member or ctx.author
     embed = discord.Embed(title=f"Avatar {member}", color=discord.Color.random())
-    embed.set_image(url=member.display_avatar.url)
-    await interaction.response.send_message(embed=embed)
+    embed.set_image(url=member.avatar.url)
+    await ctx.send(embed=embed)
 
-# Create Embed
-@bot.tree.command(name="createembed", description="Buat custom embed sendiri.")
-@app_commands.describe(title="Judul", description="Isi embed", color="Warna HEX, contoh: #FF5733")
-async def createembed(interaction: discord.Interaction, title: str, description: str, color: str = "#3498db"):
-    await interaction.response.defer()
+@bot.command(name="createembed")
+async def create_embed(ctx, title: str, description: str, color: str = "#3498db"):
     try:
         if not color.startswith("#"):
             color = f"#{color}"
         color_int = int(color[1:], 16)
         embed = discord.Embed(title=title, description=description, color=color_int)
-        await interaction.followup.send(embed=embed)
+        await ctx.send(embed=embed)
     except ValueError:
-        await interaction.followup.send("Format warna salah! Gunakan HEX misal `#FF5733`.", ephemeral=True)
+        await ctx.send("Format warna salah sayang! Gunakan HEX misal `#FF5733`.")
 
-# Help
-@bot.tree.command(name="help", description="Lihat semua perintah bot ini.")
-async def help_command(interaction: discord.Interaction):
-    embed = discord.Embed(title="FlessGDBot Commands", description="Semua fitur keren:", color=discord.Color.blue())
-    commands_list = [
-        "/ping", "/clear", "/userinfo", "/serverinfo", "/botinfo",
-        "/gtw", "/avatar", "/createembed", "/searchsong", "/gdpsinfo",
-        "/searchlevel", "/uploadsong", "/stats", "/login", "/profile"
-    ]
-    for cmd in commands_list:
-        embed.add_field(name=cmd, value="\u200b", inline=True)
-    await interaction.response.send_message(embed=embed)
+@bot.command(name="help")
+async def help_command(ctx):
+    embed = discord.Embed(title="FlessGDBot Commands", description="Semua fitur keren yang bisa kamu pakai:", color=discord.Color.blue())
+    embed.add_field(name="F ping", value="Cek koneksi bot", inline=False)
+    embed.add_field(name="F clear [jumlah]", value="Hapus pesan", inline=False)
+    embed.add_field(name="F userinfo", value="Lihat info member", inline=False)
+    embed.add_field(name="F serverinfo", value="Info server", inline=False)
+    embed.add_field(name="F botinfo", value="Info tentang bot", inline=False)
+    embed.add_field(name="F gtw [pesan]", value="Bot mengulang pesanmu", inline=False)
+    embed.add_field(name="F avatar", value="Lihat avatar member", inline=False)
+    embed.add_field(name="F createembed", value="Buat embed sendiri", inline=False)
+    embed.add_field(name="F searchlevel", value="Cari level di FrGDPS", inline=False)
+    embed.add_field(name="F uploadsong", value="Upload Lagu di FrGDPS", inline=False)
+    embed.add_field(name="F stats", value="Liat Statistik User FrGDPS", inline=False)
+    embed.add_field(name="F profile", value="Lihat profil user FrGDPS", inline=False)
+    embed.add_field(name="F login", value="Login Akun FrGDPS", inline=False)
+    await ctx.send(embed=embed)
 
-# Upload Song
-@bot.tree.command(name="uploadsong", description="Upload lagu ke server FrGDPS.")
-@app_commands.describe(name="Nama lagu", id="ID lagu", size="Ukuran byte", author="Nama author", download="1/0 bisa diunduh")
-async def uploadsong(interaction: discord.Interaction, name: str, id: int, size: int, author: str, download: int):
-    await interaction.response.defer()
+@bot.command(name="uploadsong")
+async def uploadsong(ctx, name: str, id: int, size: int, author: str, download: int):
+    data = {
+        "songName": name,
+        "songID": id,
+        "songSize": size,
+        "songAuthor": author,
+        "download": download
+    }
     try:
-        res = requests.post(API_BASE + "addSong.php", data={
-            "songName": name, "songID": id, "songSize": size, "songAuthor": author, "download": download
-        })
-        await interaction.followup.send(f"Response: {res.text}")
+        res = requests.post(API_BASE + "addSong.php", data=data)
+        await ctx.send(f"Response: {res.text}")
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}")
+        await ctx.send(f"Error: {e}")
 
-# Search Level
-@bot.tree.command(name="searchlevel", description="Cari level berdasarkan nama.")
-@app_commands.describe(query="Nama level")
-async def searchlevel(interaction: discord.Interaction, query: str):
-    await interaction.response.defer()
+@bot.command(name="searchlevel")
+async def searchlevel(ctx, *, query: str):
     try:
         res = requests.post(API_BASE + "searchLevel.php", data={"query": query})
-        await interaction.followup.send(f"Result: {res.text}")
+        await ctx.send(f"Hasil: {res.text}")
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}")
+        await ctx.send(f"Error: {e}")
 
-# Who Rated
-@bot.tree.command(name="whorated", description="Siapa yang rate level.")
-@app_commands.describe(level_id="ID level")
-async def whorated(interaction: discord.Interaction, level_id: int):
-    await interaction.response.defer()
+@bot.command(name="whorated")
+async def whorated(ctx, level_id: int):
     try:
         res = requests.post(API_BASE + "whoRated.php", data={"levelID": level_id})
-        await interaction.followup.send(f"Rated by: {res.text}")
+        await ctx.send(f"Rated by: {res.text}")
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}")
+        await ctx.send(f"Error: {e}")
 
-# Stats
-@bot.tree.command(name="stats", description="Lihat statistik FrGDPS")
-async def stats(interaction: discord.Interaction):
-    await interaction.response.defer()
+@bot.command(name="stats")
+async def stats(ctx):
     try:
         res = requests.get(API_BASE + "stats.php")
-        await interaction.followup.send(f"Stats: {res.text}")
+        await ctx.send(f"Stats: {res.text}")
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}")
+        await ctx.send(f"Error: {e}")
 
-# Profile
-@bot.tree.command(name="profile", description="Lihat profil user.")
-@app_commands.describe(username="Username FrGDPS")
-async def profile(interaction: discord.Interaction, username: str):
-    await interaction.response.defer()
+@bot.command(name="profile")
+async def profile(ctx, username: str):
     try:
         res = requests.post(API_BASE + "profile.php", data={"username": username})
-        await interaction.followup.send(f"Profile: {res.text}")
+        await ctx.send(f"Profile: {res.text}")
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}")
+        await ctx.send(f"Error: {e}")
 
-# Login
-@bot.tree.command(name="login", description="Login user FrGDPS")
-@app_commands.describe(username="Username", password="Password")
-async def login(interaction: discord.Interaction, username: str, password: str):
-    await interaction.response.defer(ephemeral=True)
+@bot.command(name="login")
+async def login(ctx, username: str, password: str):
     try:
         res = requests.post(API_BASE + "login.php", data={"username": username, "password": password})
-        await interaction.followup.send(f"Login Response: {res.text}", ephemeral=True)
+        await ctx.send(f"Login Response: {res.text}")
     except Exception as e:
-        await interaction.followup.send(f"Error: {e}", ephemeral=True)
+        await ctx.send(f"Error: {e}")
 
+# Jalankan Bot
 if __name__ == "__main__":
     if TOKEN is None:
         print("DISCORD_TOKEN tidak ditemukan.")
