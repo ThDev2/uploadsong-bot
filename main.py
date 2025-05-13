@@ -111,10 +111,41 @@ async def whorated(ctx, level_id: int):
 @bot.command()
 async def stats(ctx):
     async with aiohttp.ClientSession() as session:
-        status, text = await api_get(session, "stats.php")
-    for chunk in [text[i:i+2000] for i in range(0, len(text), 2000)]:
-        await ctx.send(chunk)
+        async with session.get("https://fless.ps.fhgdps.com/dashboard/api/stats.php") as resp:
+            data = await resp.json()
 
+    if not data.get("success"):
+        await ctx.send("Gagal mengambil data statistik.")
+        return
+
+    stats = data["stats"]
+    users = stats["users"]
+    levels = stats["levels"]
+    downloads = stats["downloads"]
+    objects = stats["objects"]
+    likes = stats["likes"]
+    comments = stats["comments"]
+    stars = stats["gained_stars"]
+    cp = stats["creator_points"]
+    bans = stats["bans"]
+
+    embed = discord.Embed(title="FlessGDPS Stats", color=0x00ffcc)
+    embed.add_field(name="Users", value=f'Total: **{users["total"]}**\nActive: **{users["active"]}**', inline=True)
+    embed.add_field(name="Levels", value=(
+        f'Total: **{levels["total"]}**\n'
+        f'Rated: {levels["rated"]}, Featured: {levels["featured"]}\n'
+        f'Epic: {levels["epic"]}, Legendary: {levels["legendary"]}, Mythic: {levels["mythic"]}\n'
+        f'Dailies: {levels["special"]["dailies"]}, Weeklies: {levels["special"]["weeklies"]}'
+    ), inline=False)
+    embed.add_field(name="Downloads", value=f'Total: {downloads["total"]}\nAvg: {downloads["average"]:.2f}', inline=True)
+    embed.add_field(name="Objects", value=f'Total: {objects["total"]}\nAvg: {objects["average"]:.2f}', inline=True)
+    embed.add_field(name="Likes", value=f'Total: {likes["total"]}\nAvg: {likes["average"]:.2f}', inline=True)
+    embed.add_field(name="Comments", value=f'Total: {comments["total"]}\nPosts: {comments["posts"]}, Replies: {comments["post_replies"]}', inline=False)
+    embed.add_field(name="Stars", value=f'Total: {stars["total"]}\nAvg: {stars["average"]:.2f}', inline=True)
+    embed.add_field(name="Creator Points", value=f'Total: {cp["total"]}\nAvg: {cp["average"]:.2f}', inline=True)
+    embed.add_field(name="Bans", value=f'Total: {bans["total"]}\nLeaderboard Bans: {bans["banTypes"]["leaderboardBans"]}', inline=False)
+
+    await ctx.send(embed=embed)
 @bot.command()
 async def profile(ctx, username: str):
     async with aiohttp.ClientSession() as session:
